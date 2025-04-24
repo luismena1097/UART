@@ -1,0 +1,83 @@
+/*
+	UART Rx
+	Diseño realizado por: Luis Mena
+*/
+module UART_Rx (
+input clk, nrst, rx, rx_flag_clr,
+output [7:0] Rx_Data,
+output reg parity_error, 
+output rx_flag
+);
+
+/*Wire*/
+wire enable_baud_rate_counter;
+wire baud_rate_enable_out;
+wire half_bit_sample_w;
+wire enable_tk_pkg_done;
+wire [8:0] Rx_Data_w;
+wire parity_check;
+wire data_done_counter;
+
+SIPO #(.DW(9)) RX_Data_Reg (
+.serial_input(rx), .rst(nrst), .en(half_bit_sample_w), .clk(clk), 	//enable_baud_rate_counter viene de la FSM
+.Parallel_out(Rx_Data_w)
+);
+
+/*
+	Contador comparador para generar el baud rate
+	enable_out = Frecuencia reloj interno / (Baud_rate deseado) -1
+	enable_out = 50MHZ/(9600) - 1 = 5207.33
+	en vendrá de la FSM
+	enable_out señal que ira a la FSM 
+*/
+baud_rate #(.DW(14), .limit(5208)) baud_rate(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(enable_baud_rate_counter),	//enable_baud_rate_counter viene de la FSM y es el mismo que habilita el SIPO
+.enable_out(baud_rate_enable_out), .baud_rate_clk(),
+.contador() //No se requiere esta variable
+);
+
+baud_rate #(.DW(12), .limit(2604)) half_bit_sample(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(enable_baud_rate_counter),	//enable_baud_rate_counter viene de la FSM y es el mismo que habilita el SIPO
+.enable_out(half_bit_sample_w), .baud_rate_clk(),
+.contador() //No se requiere esta variable
+);
+
+/*Dato recibido completo*/
+contador_comparador #(.DW(4), .limit(8)) contador_bits (
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(baud_rate_enable_out),
+.enable_out(data_done_counter),																		//data_done_counter va a la FSM
+.contador() //No se requiere esta variable
+);
+
+/*Contador de bits transmitidos del dato + paridad + stop bit
+enable_out ira a la FSM
+*/
+contador_comparador #(.DW(4), .limit(10)) contador_total_bits(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(baud_rate_enable_out),
+.enable_out(enable_tk_pkg_done),																		//enable_tk_pkg_done va a la FSM
+.contador() //No se requiere esta variable
+);
+
+// Parity check (even parity) based on received byte
+parity parity (
+    .Tx_Data(Rx_Data_w[7:0]), 
+    .parity(parity_check)               // Parity check signal from Rx_Data
+);
+
+always@(parity_check,Rx_Data_w[8])
+begin
+if(parity_check == Rx_Data_w[8])
+	parity_error = 1'b0;
+else
+	parity_error = 1'b1;
+end
+
+UART_FSM_Rx RX_FSM (
+.clk(clk), .nrst(nrst), .rx(rx), 
+.baud_rate_enable_out(baud_rate_enable_out), .count_bits(data_done_counter), .enable_tk_pkg_done(enable_tk_pkg_done), .rx_flag_clr(rx_flag_clr),
+.enable_baud_rate_counter(enable_baud_rate_counter), .rx_flag(rx_flag)
+);
+
+assign Rx_Data = Rx_Data_w[7:0];
+
+endmodule
