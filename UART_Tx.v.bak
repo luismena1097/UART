@@ -1,0 +1,86 @@
+/*
+	UART Tx
+	Diseño realizado por: Luis Mena & David Monteon
+	Practica 2
+*/
+module UART_Tx (
+input clk, nrst, tx_send,
+input [7:0] Tx_Data,
+output tx_output_serial
+);
+
+wire PISO_TX_2_Mux;
+wire baud_rate_enable_out;
+wire bit_paridad;
+wire data_done_counter;
+wire load_data_2_PISO;
+wire enable_baud_rate_counter;
+wire [1:0] selector_mux;
+wire enable_tk_pkg_done;
+wire one_shot_tx_send;
+
+//Registro de entrada paralela y salida serial para el envio de datos (Tx)
+//Load necesita venir de la FSM Tx (permitir cargar datos solo en IDLE
+//Enable se tiene que habilitar solo con el baud rate, tambien vendrá de la FSM
+//Q tiene que ir conectada al mux para enviar los datos
+PISO #(.DW(8)) TX_Data_Reg(
+.clk(clk), .nrst(nrst), .enable(baud_rate_enable_out), .load(load_data_2_PISO), .Data(Tx_Data), .Q(PISO_TX_2_Mux));
+
+/*
+	Contador comparador para generar el baud rate
+	enable_out = Frecuencia reloj interno / (Baud_rate deseado) -1
+	enable_out = 50MHZ/(9600) - 1 = 5207.33
+	en vendrá de la FSM
+	enable_out señal que ira a la FSM 
+*/
+baud_rate #(.DW(14), .limit(5208)) baud_rate(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(enable_baud_rate_counter),
+.enable_out(baud_rate_enable_out), .baud_rate_clk(),
+.contador() //No se requiere esta variable
+);
+
+/*Contador de bits transmitidos del dato
+enable_out ira a la FSM
+*/
+contador_comparador #(.DW(4), .limit(8)) contador_bits(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(baud_rate_enable_out),
+.enable_out(data_done_counter),
+.contador() //No se requiere esta variable
+);
+
+/*Contador de bits transmitidos del dato + paridad + stop bit
+enable_out ira a la FSM
+*/
+contador_comparador #(.DW(4), .limit(10)) contador_total_bits(
+.clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(baud_rate_enable_out),
+.enable_out(enable_tk_pkg_done),
+.contador() //No se requiere esta variable
+);
+
+parity parity(
+.Tx_Data(Tx_Data),
+.parity(bit_paridad)
+);
+
+//Selector vendrá de la FSM
+Mux_4a1 TX_serial(
+.Entrada_A_mux_4a1(1'b1),
+.Entrada_B_mux_4a1(1'b0),
+.Entrada_C_mux_4a1(bit_paridad),
+.Entrada_D_mux_4a1(PISO_TX_2_Mux),
+.Selector_mux(selector_mux),	 
+.Salida_mux_4a1(tx_output_serial)
+);
+
+/*One shot TX_SEND*/
+
+Debouncer tx_send_1_shot(.clk(clk), .rst(nrst), .sw(tx_send), .one_shot(one_shot_tx_send));
+
+UART_FSM_Tx TX_FSM(
+.clk(clk), .nrst(nrst), .tx_send(one_shot_tx_send), .count_bits(data_done_counter), 
+.baud_rate_en(baud_rate_enable_out), .enable_tk_pkg_done(enable_tk_pkg_done),
+.load_data_2_PISO(load_data_2_PISO), .enable_baud_rate(enable_baud_rate_counter),
+.Selector_datos(selector_mux)
+);
+
+endmodule

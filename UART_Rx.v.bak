@@ -14,14 +14,13 @@ wire enable_baud_rate_counter;
 wire baud_rate_enable_out;
 wire half_bit_sample_w;
 wire enable_tk_pkg_done;
+wire [8:0] Rx_Data_w;
 wire parity_check;
 wire data_done_counter;
 wire sipo_en_w;
-wire half_bit_sample_data_w; 
-wire [8:0] Rx_Data_w;
 
 SIPO #(.DW(9)) RX_Data_Reg (
-.serial_input(rx), .rst(nrst), .en(half_bit_sample_data_w & sipo_en_w), .clk(clk), 	//enable_baud_rate_counter viene de la FSM
+.serial_input(rx), .rst(nrst), .en(sipo_en_w), .clk(clk), 	//enable_baud_rate_counter viene de la FSM
 .Parallel_out(Rx_Data_w)
 );
 
@@ -44,12 +43,6 @@ baud_rate #(.DW(12), .limit(2604)) half_bit_sample(
 .contador() //No se requiere esta variable
 );
 
-baud_rate #(.DW(2), .limit(1)) half_bit_sample2(
-.clk(clk), .rst(nrst ), .en(half_bit_sample_w),	//enable_baud_rate_counter viene de la FSM y es el mismo que habilita el SIPO
-.enable_out(half_bit_sample_data_w), .baud_rate_clk(),
-.contador() //No se requiere esta variable
-);
-
 /*Dato recibido completo*/
 contador_comparador #(.DW(4), .limit(8)) contador_bits (
 .clk(clk), .rst(nrst | ~enable_baud_rate_counter), .en(baud_rate_enable_out),
@@ -66,7 +59,6 @@ contador_comparador #(.DW(4), .limit(10)) contador_total_bits(
 .contador() //No se requiere esta variable
 );
 
-
 // Parity check (even parity) based on received byte
 parity parity (
     .Tx_Data(Rx_Data_w[7:0]), 
@@ -81,11 +73,10 @@ else
 	parity_error = 1'b1;
 end
 
-
 UART_FSM_Rx RX_FSM (
 .clk(clk), .nrst(nrst), .rx(rx), 
 .baud_rate_enable_out(baud_rate_enable_out), .count_bits(data_done_counter), .enable_tk_pkg_done(enable_tk_pkg_done), .rx_flag_clr(rx_flag_clr), 
-.enable_baud_rate_counter(enable_baud_rate_counter), .rx_flag(rx_flag), .sipo_en(sipo_en_w)
+.enable_baud_rate_counter(enable_baud_rate_counter), .rx_flag(rx_flag), sipo_en(sipo_en_w)
 );
 
 assign Rx_Data = Rx_Data_w[7:0];

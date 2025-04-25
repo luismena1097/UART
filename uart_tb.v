@@ -1,0 +1,37 @@
+`timescale 1ns / 1ps
+module uart_tb;
+
+reg clk_tb, rst_tb, tx_send_tb, rx_flag_clr_tb;
+reg [7:0] Tx_Data_tb;
+wire tx_output_serial_tb, parity_tb, rx_flag_tb;
+wire [7:0] Rx_Data_tb;
+
+
+uart  UUT(
+    .clk(clk_tb), .rst(rst_tb), .tx_send(tx_send_tb), .rx(tx_output_serial_tb), .rx_flag_clr(rx_flag_clr_tb),
+    .Tx_Data(Tx_Data_tb),
+    .tx_output_serial(tx_output_serial_tb),
+    .Rx_Data(Rx_Data_tb),
+    .parity_error(parity_tb), .rx_flag(rx_flag_tb)
+);
+
+initial 
+begin
+        clk_tb 		= 1'b0;
+	rst_tb 		= 1'b0;
+	tx_send_tb 	= 1'b0;
+	rx_flag_clr_tb  = 1'b0;
+	Tx_Data_tb 	= 7'b1010111;
+	#10 rst_tb 	= 1'b1;
+	#30 rst_tb 	= 1'b0;
+	#60 tx_send_tb 	= 1'b1;
+	#20 tx_send_tb 	= 1'b0;
+end
+
+always 
+begin
+	#20 clk_tb = ~clk_tb;  
+end
+
+
+endmodule

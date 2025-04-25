@@ -1,6 +1,6 @@
 /*
 	Registro PISO (Parallel Input Serial Output)
-	Diseño realizado por: Luis Mena
+	Diseño realizado por: Luis Mena & David Monteon
 	Practica 2
 */
 module PISO #(parameter DW=5) (

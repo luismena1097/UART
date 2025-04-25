@@ -4,8 +4,8 @@
 	Practica 2
 */
 module UART_FSM_Rx (
-input clk, nrst, rx, baud_rate_enable_out, count_bits, enable_tk_pkg_done, rx_flag_clr,
-output reg enable_baud_rate_counter, rx_flag
+input clk, nrst, rx, baud_rate_enable_out, count_bits, enable_tk_pkg_done, rx_flag_clr, 
+output reg enable_baud_rate_counter, rx_flag, sipo_en
 );
 
 localparam IDLE   = 3'b000;		//0
@@ -77,36 +77,43 @@ case(estado)
 	begin
 		enable_baud_rate_counter 	= 1'b0;
 		rx_flag							= 1'b0;
+		sipo_en							= 1'b0;
 	end
 	START:
 	begin
 		enable_baud_rate_counter 	= 1'b1;
-		rx_flag							= 1'b0;		
+		rx_flag							= 1'b0;
+		sipo_en							= 1'b0;	
 	end
 	DATA:
 	begin
 		enable_baud_rate_counter 	= 1'b1;
-		rx_flag							= 1'b0;		
+		rx_flag							= 1'b0;
+		sipo_en							= 1'b1;		
 	end
 	PARITY:
 	begin
 		enable_baud_rate_counter 	= 1'b1;
 		rx_flag							= 1'b0;	
+		sipo_en							= 1'b1;
 	end
 	STOP:
 	begin
 		enable_baud_rate_counter 	= 1'b1;
-		rx_flag							= 1'b1;		
+		rx_flag							= 1'b1;
+		sipo_en							= 1'b0;	
 	end
 	CLEAR:
 	begin
 		enable_baud_rate_counter 	= 1'b0;
-		rx_flag							= 1'b0;		
+		rx_flag							= 1'b1;
+		sipo_en							= 1'b0;	
 	end
 	default:
 	begin
 		enable_baud_rate_counter 	= 1'b0;
-		rx_flag							= 1'b0;	
+		rx_flag							= 1'b0;
+		sipo_en							= 1'b0;
 	end
 endcase
 end

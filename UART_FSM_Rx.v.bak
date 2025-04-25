@@ -1,0 +1,13 @@
+/*
+	UART TX
+	Diseño realizado por: Luis Mena
+	Practica 2
+*/
+module UART_FSM_Rx (
+input clk, nrst, tx_send, count_bits, baud_rate_en, enable_tk_pkg_done,
+output reg load_data_2_PISO, enable_baud_rate,
+output reg [1:0] Selector_datos
+);
+
+
+endmodule
